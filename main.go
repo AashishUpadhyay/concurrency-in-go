@@ -4,14 +4,18 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"sync"
 )
 
 func main() {
-	receiveOrders()
+	var wg sync.WaitGroup
+	wg.Add(1)
+	receiveOrders(&wg)
+	wg.Wait()
 	fmt.Println(orders)
 }
 
-func receiveOrders() {
+func receiveOrders(wg *sync.WaitGroup) {
 	for _, rawOrder := range rawOrders {
 		var newOrder order
 		err := json.Unmarshal([]byte(rawOrder), &newOrder)
@@ -21,6 +25,7 @@ func receiveOrders() {
 		}
 		orders = append(orders, newOrder)
 	}
+	wg.Done()
 }
 
 var rawOrders = []string{
