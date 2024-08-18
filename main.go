@@ -13,24 +13,34 @@ func main() {
 	var receivedOrdersCh = make(chan order)
 	var validOrdersCh = make(chan order)
 	var invalidOrdersCh = make(chan invalidorder)
+	wg.Add(1)
 	go receiveOrders(receivedOrdersCh)
 	go validateOrders(receivedOrdersCh, validOrdersCh, invalidOrdersCh)
-	wg.Add(1)
-	go func() {
-		order := <-validOrdersCh
-		fmt.Printf("Valid order received : %v\n", order)
+	go func(vo <-chan order, ivo <-chan invalidorder) {
+	loop:
+		for {
+			select {
+			case order, ok := <-vo:
+				if ok {
+					fmt.Printf("Valid order received : %v\n", order)
+				} else {
+					break loop
+				}
+			case order, ok := <-ivo:
+				if ok {
+					fmt.Printf("Invalid order received : %v. Issue : %v\n", order.order, order.err)
+				} else {
+					break loop
+				}
+			}
+		}
 		wg.Done()
-	}()
-	go func() {
-		order := <-invalidOrdersCh
-		fmt.Printf("Inaalid order received : %v. Issue : %v\n", order.order, order.err)
-		wg.Done()
-	}()
+	}(validOrdersCh, invalidOrdersCh)
 	wg.Wait()
 	fmt.Println(orders)
 }
 
-func receiveOrders(out chan order) {
+func receiveOrders(out chan<- order) {
 	for _, rawOrder := range rawOrders {
 		var newOrder order
 		err := json.Unmarshal([]byte(rawOrder), &newOrder)
@@ -38,18 +48,24 @@ func receiveOrders(out chan order) {
 			log.Print(err)
 			continue
 		}
+		fmt.Printf("Received order : %d\n", newOrder.ProductCode)
 		out <- newOrder
 	}
+	close(out)
 }
 
-func validateOrders(in chan order, out chan order, errChan chan invalidorder) {
-	order := <-in
-	if order.Quantity <= 0 {
-		// error condition
-		errChan <- invalidorder{order: order, err: errors.New("Quantity must be greater than zero")}
-	} else {
-		out <- order
+func validateOrders(in <-chan order, out chan<- order, errChan chan<- invalidorder) {
+	for order := range in {
+		fmt.Printf("Validating order : %d\n", order.ProductCode)
+		if order.Quantity <= 0 {
+			// error condition
+			errChan <- invalidorder{order: order, err: errors.New("Quantity must be greater than zero")}
+		} else {
+			out <- order
+		}
 	}
+	close(out)
+	close(errChan)
 }
 
 var rawOrders = []string{
