@@ -13,13 +13,15 @@ func main() {
 	wg.Add(1)
 	receivedOrdersCh := receiveOrders()
 	validOrdersCh, invalidOrdersCh := validateOrders(receivedOrdersCh)
+	reserveOrdersCh := reserveOrders(validOrdersCh)
+	filledOrdersCh := filledOrders(reserveOrdersCh)
 	go func(vo <-chan order, ivo <-chan invalidorder) {
 	loop:
 		for {
 			select {
 			case order, ok := <-vo:
 				if ok {
-					fmt.Printf("Valid order received : %v\n", order)
+					fmt.Printf("Order filled : %v\n", order)
 				} else {
 					break loop
 				}
@@ -32,7 +34,7 @@ func main() {
 			}
 		}
 		wg.Done()
-	}(validOrdersCh, invalidOrdersCh)
+	}(filledOrdersCh, invalidOrdersCh)
 	wg.Wait()
 }
 
@@ -46,6 +48,7 @@ func receiveOrders() <-chan order {
 				log.Print(err)
 				continue
 			}
+			newOrder.Status = received
 			out <- newOrder
 		}
 		close(out)
@@ -69,6 +72,34 @@ func validateOrders(in <-chan order) (<-chan order, <-chan invalidorder) {
 		close(errChan)
 	}()
 	return out, errChan
+}
+
+func reserveOrders(in <-chan order) <-chan order {
+	var out = make(chan order)
+	go func() {
+		for order := range in {
+			if order.Status == received {
+				order.Status = reserved
+			}
+			out <- order
+		}
+		close(out)
+	}()
+	return out
+}
+
+func filledOrders(in <-chan order) <-chan order {
+	var out = make(chan order)
+	go func() {
+		for order := range in {
+			if order.Status == reserved {
+				order.Status = filled
+			}
+			out <- order
+		}
+		close(out)
+	}()
+	return out
 }
 
 var rawOrders = []string{
