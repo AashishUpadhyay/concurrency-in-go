@@ -10,6 +10,11 @@ type order struct {
 	Status      orderStatus
 }
 
+type invalidorder struct {
+	order order
+	err   error
+}
+
 type orderStatus int
 
 const (
