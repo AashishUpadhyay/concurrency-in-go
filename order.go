@@ -45,5 +45,3 @@ func orderStatusToText(o orderStatus) string {
 		return "unknown status"
 	}
 }
-
-var orders = []order{}
