@@ -23,7 +23,9 @@ func main() {
 
 func contextExample() {
 	// cancel after a while example
-	var ctx, cancel = context.WithCancel(context.Background())
+	// var ctx, cancel = context.WithCancel(context.Background())
+	var ctx, cancel = context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func(ctx context.Context) {
@@ -36,9 +38,6 @@ func contextExample() {
 			fmt.Println("tick!")
 		}
 	}(ctx)
-
-	time.Sleep(2 * time.Second)
-	cancel()
 	wg.Wait()
 }
 
