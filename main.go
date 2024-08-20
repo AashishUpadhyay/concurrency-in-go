@@ -9,6 +9,31 @@ import (
 )
 
 func main() {
+	orderManagement()
+	mutexExample()
+}
+
+func mutexExample() {
+	var wg sync.WaitGroup
+	var m sync.Mutex
+	var arr = []int{}
+
+	const iterations = 1000
+	wg.Add(iterations)
+	for i := 0; i < iterations; i++ {
+		go func() {
+			m.Lock()
+			defer m.Unlock()
+			arr = append(arr, 1)
+			wg.Done()
+		}()
+	}
+
+	wg.Wait()
+	fmt.Printf("Length : %d", len(arr))
+}
+
+func orderManagement() {
 	var wg sync.WaitGroup
 	receivedOrdersCh := receiveOrders()
 	validOrdersCh, invalidOrdersCh := validateOrders(receivedOrdersCh)
