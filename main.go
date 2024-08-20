@@ -1,16 +1,34 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
 	"sync"
+
+	_ "github.com/mattn/go-sqlite3"
 )
 
 func main() {
 	orderManagement()
 	mutexExample()
+	syncOnceExample()
+	syncOnceExample()
+}
+
+var m sync.Once
+
+func syncOnceExample() {
+	m.Do(func() {
+		db, err := sql.Open("sqlite3", "./foo.db")
+		fmt.Print("Opening Connnection!\n")
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer db.Close()
+	})
 }
 
 func mutexExample() {
@@ -30,7 +48,7 @@ func mutexExample() {
 	}
 
 	wg.Wait()
-	fmt.Printf("Length : %d", len(arr))
+	fmt.Printf("Length : %d\n", len(arr))
 }
 
 func orderManagement() {
