@@ -1,12 +1,14 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
 	"sync"
+	"time"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -16,6 +18,28 @@ func main() {
 	mutexExample()
 	syncOnceExample()
 	syncOnceExample()
+	contextExample()
+}
+
+func contextExample() {
+	// cancel after a while example
+	var ctx, cancel = context.WithCancel(context.Background())
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func(ctx context.Context) {
+		defer wg.Done()
+		for range time.Tick(500 * time.Millisecond) {
+			if ctx.Err() != nil {
+				log.Println(ctx.Err())
+				return
+			}
+			fmt.Println("tick!")
+		}
+	}(ctx)
+
+	time.Sleep(2 * time.Second)
+	cancel()
+	wg.Wait()
 }
 
 var m sync.Once
