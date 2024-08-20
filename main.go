@@ -13,19 +13,24 @@ func main() {
 	receivedOrdersCh := receiveOrders()
 	validOrdersCh, invalidOrdersCh := validateOrders(receivedOrdersCh)
 	reserveOrdersCh := reserveOrders(validOrdersCh)
-	wg.Add(2)
+	wg.Add(1)
 	go func(ivo <-chan invalidorder) {
 		for invorder := range ivo {
 			fmt.Printf("Invalid order : %v\n", invorder.order.ProductCode)
 		}
 		wg.Done()
 	}(invalidOrdersCh)
-	go func(vo <-chan order) {
-		for vorder := range vo {
-			fmt.Printf("Order Reserved : %v\n", vorder)
-		}
-		wg.Done()
-	}(reserveOrdersCh)
+
+	const workers = 3
+	wg.Add(workers)
+	for i := 0; i < workers; i++ {
+		go func(vo <-chan order) {
+			for vorder := range vo {
+				fmt.Printf("Order Reserved : %v\n", vorder)
+			}
+			wg.Done()
+		}(reserveOrdersCh)
+	}
 	wg.Wait()
 }
 
