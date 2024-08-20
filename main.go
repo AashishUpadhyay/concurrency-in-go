@@ -32,16 +32,17 @@ func syncOnceExample() {
 }
 
 func mutexExample() {
+	// run using go run -race . and detect race conditions
 	var wg sync.WaitGroup
-	var m sync.Mutex
+	// var m sync.Mutex
 	var arr = []int{}
 
 	const iterations = 1000
 	wg.Add(iterations)
 	for i := 0; i < iterations; i++ {
 		go func() {
-			m.Lock()
-			defer m.Unlock()
+			// m.Lock()
+			// defer m.Unlock()
 			arr = append(arr, 1)
 			wg.Done()
 		}()
