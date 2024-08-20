@@ -10,31 +10,22 @@ import (
 
 func main() {
 	var wg sync.WaitGroup
-	wg.Add(1)
 	receivedOrdersCh := receiveOrders()
 	validOrdersCh, invalidOrdersCh := validateOrders(receivedOrdersCh)
 	reserveOrdersCh := reserveOrders(validOrdersCh)
-	filledOrdersCh := filledOrders(reserveOrdersCh)
-	go func(vo <-chan order, ivo <-chan invalidorder) {
-	loop:
-		for {
-			select {
-			case order, ok := <-vo:
-				if ok {
-					fmt.Printf("Order filled : %v\n", order)
-				} else {
-					break loop
-				}
-			case order, ok := <-ivo:
-				if ok {
-					fmt.Printf("Invalid order received : %v. Issue : %v\n", order.order, order.err)
-				} else {
-					break loop
-				}
-			}
+	wg.Add(2)
+	go func(ivo <-chan invalidorder) {
+		for invorder := range ivo {
+			fmt.Printf("Invalid order : %v\n", invorder.order.ProductCode)
 		}
 		wg.Done()
-	}(filledOrdersCh, invalidOrdersCh)
+	}(invalidOrdersCh)
+	go func(vo <-chan order) {
+		for vorder := range vo {
+			fmt.Printf("Order Reserved : %v\n", vorder)
+		}
+		wg.Done()
+	}(reserveOrdersCh)
 	wg.Wait()
 }
 
@@ -63,7 +54,7 @@ func validateOrders(in <-chan order) (<-chan order, <-chan invalidorder) {
 		for order := range in {
 			if order.Quantity <= 0 {
 				// error condition
-				errChan <- invalidorder{order: order, err: errors.New("Quantity must be greater than zero")}
+				errChan <- invalidorder{order: order, err: errors.New("quantity must be greater than zero")}
 			} else {
 				out <- order
 			}
@@ -78,23 +69,7 @@ func reserveOrders(in <-chan order) <-chan order {
 	var out = make(chan order)
 	go func() {
 		for order := range in {
-			if order.Status == received {
-				order.Status = reserved
-			}
-			out <- order
-		}
-		close(out)
-	}()
-	return out
-}
-
-func filledOrders(in <-chan order) <-chan order {
-	var out = make(chan order)
-	go func() {
-		for order := range in {
-			if order.Status == reserved {
-				order.Status = filled
-			}
+			order.Status = reserved
 			out <- order
 		}
 		close(out)
@@ -106,4 +81,5 @@ var rawOrders = []string{
 	`{"productCode":1111, "quantity":5, "status":1}`,
 	`{"productCode":2222, "quantity":42.3, "status":1}`,
 	`{"productCode":3333, "quantity":19, "status":1}`,
+	`{"productCode":444, "quantity":-19, "status":1}`,
 }
